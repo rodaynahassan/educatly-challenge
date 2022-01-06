@@ -1,0 +1,68 @@
+{
+  "days": [
+    {
+      "id": 1,
+      "day": "2022-01-01",
+      "arrived": "08:21 AM",
+      "exit": "17:45 PM",
+      "lunch": "03:41 PM",
+      "workedhours": "10 hours and 6 minutes",
+      "status": "Above"
+    },
+    {
+      "id": 2,
+      "day": "2022-01-02",
+      "arrived": "09:25 AM",
+      "exit": "16:25 PM",
+      "lunch": "15:25 PM",
+      "workedhours": "8 hours and 50 minutes",
+      "status": "Above"
+    },
+    {
+      "id": 3,
+      "day": "2022-01-03",
+      "arrived": "09:36 AM",
+      "exit": "15:46 PM",
+      "lunch": "10:30 AM",
+      "workedhours": "7 hours and 22 minutes",
+      "status": "Below"
+    },
+    {
+      "id": 4,
+      "day": "2022-01-04",
+      "arrived": "08:36 AM",
+      "exit": "15:00:PM",
+      "lunch": "15:47 PM",
+      "workedhours": "8 hours and 36 minutes",
+      "status": "Above"
+    },
+    {
+      "id": 5,
+      "day": "2022-01-05",
+      "arrived": "08:20 AM",
+      "exit": "15:00:PM",
+      "lunch": "14:52 PM",
+      "workedhours": "8 hours and 20 minutes",
+      "status": "Above"
+    },
+    {
+      "id": 6,
+      "day": "2022-01-06",
+      "arrived": "",
+      "exit": "",
+      "lunch": "",
+      "workedhours": "",
+      "status": ""
+    }
+  ],
+  "comments": [
+    {
+      "id": 1,
+      "body": "some comment",
+      "postId": 1
+    }
+  ],
+  "profile": {
+    "name": "typicode"
+  }
+}
