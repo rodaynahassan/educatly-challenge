@@ -10,6 +10,10 @@ npm start
 
 And voila, here is the easiet application to track your working hours!
 
+# Material UI
+
+Material UI was used in this project in order to build a scalable, interactive design with vibrant colors and visual props. It was the only UI library used to avoid using multiple libraries and put extra load on the project.
+
 # Interacting with the webpage
 
     - The table displayed is only for one employee showing his working hours history
