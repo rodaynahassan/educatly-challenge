@@ -3,8 +3,6 @@ import Button from "@mui/material/Button";
 
 import { lightBlue } from "@mui/material/colors";
 
-const axios = require("axios");
-
 export default function EnterButton({ onButtonClick }) {
   return (
     <Button

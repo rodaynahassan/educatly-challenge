@@ -1,5 +1,4 @@
 import * as React from "react";
-import useEffect from "react";
 
 import Table from "@mui/material/Table";
 import TableBody from "@mui/material/TableBody";
@@ -19,9 +18,6 @@ import KeyboardArrowRight from "@mui/icons-material/KeyboardArrowRight";
 import LastPageIcon from "@mui/icons-material/LastPage";
 import Box from "@mui/material/Box";
 import TextField from "@mui/material/TextField";
-import AdapterDateFns from "@mui/lab/AdapterDateFns";
-import LocalizationProvider from "@mui/lab/LocalizationProvider";
-import DesktopTimePicker from "@mui/lab/DesktopTimePicker";
 import Stack from "@mui/material/Stack";
 
 import { lightBlue } from "@mui/material/colors";
@@ -121,59 +117,70 @@ export default function HomePage() {
       const result = await axios("http://localhost:3000/days");
       let arr = [];
       let data = arr.concat(result.data);
-
-      let lastId = result.data[result.data.length - 1].id;
-      let lastRow = result.data[result.data.length - 1].day;
+      let lastDayIndex = data.length - 1;
+      let lastId = data[lastDayIndex].id;
+      let lastRow = data[lastDayIndex].day;
       let lastYear = parseInt(lastRow.substring(0, 4));
       let lastMonth = parseInt(lastRow.substring(5, 7));
       let lastDay = parseInt(lastRow.substring(8));
-
-      //Check if the current day is Friday or Saturday
-      if (currentDayOfTheWeek === 5 || currentDayOfTheWeek == 6) {
-        setRows(result.data);
-      }
+      let lastArrivedTime = data[lastDayIndex].arrived;
+      let lastExitTime = data[lastDayIndex].exit;
 
       //If it's a new working day
-      else if (
+      if (
         (currentDay > lastDay && lastMonth === currentMonth) ||
         (currentDay < lastDay && currentMonth > lastMonth) ||
         (currentDay < lastDay &&
           currentMonth < lastMonth &&
           currentYear > lastYear)
       ) {
-        let newDayDate = "";
-        var newMonth = "";
-        var newDay = "";
-        if (currentMonth < 10) {
-          newMonth = newMonth + "0" + currentMonth;
-        } else {
-          newMonth += currentMonth;
+        //Check if the day passed without entering times
+        let removed = false;
+        if (lastArrivedTime === "" || lastExitTime === "") {
+          removed = true;
+          data.pop();
+          axios.delete("http://localhost:3000/days/" + lastId);
         }
 
-        if (currentDay < 10) {
-          newDay = newDay + "0" + currentDay;
+        //Check if it's Friday or Saturday
+        if (currentDayOfTheWeek === 5 || currentDayOfTheWeek === 6) {
+          setRows(data);
         } else {
-          newDay += currentDay;
+          let newDayDate = "";
+          var newMonth = "";
+          var newDay = "";
+          if (currentMonth < 10) {
+            newMonth = newMonth + "0" + currentMonth;
+          } else {
+            newMonth += currentMonth;
+          }
+
+          if (currentDay < 10) {
+            newDay = newDay + "0" + currentDay;
+          } else {
+            newDay += currentDay;
+          }
+
+          newDayDate = currentYear + "-" + newMonth + "-" + newDay;
+          if (!removed) {
+            lastId += 1;
+          }
+          let newDayRow = {
+            id: lastId,
+            day: newDayDate,
+            arrived: "",
+            exit: "",
+            lunch: "",
+            workedhours: "",
+            status: "",
+          };
+
+          data.push(newDayRow);
+          setRows(data);
+
+          axios.post("http://localhost:3000/days", newDayRow);
         }
-
-        newDayDate = currentYear + "-" + newMonth + "-" + newDay;
-
-        let newDayRow = {
-          id: lastId + 1,
-          day: newDayDate,
-          arrived: "",
-          exit: "",
-          lunch: "",
-          workedhours: "",
-          status: "",
-        };
-
-        data.push(newDayRow);
-        setRows(data);
-
-        axios.post("http://localhost:3000/days", newDayRow);
       }
-
       //If we are still on the same day
       else if (
         currentDay === lastDay &&
@@ -185,7 +192,8 @@ export default function HomePage() {
     };
 
     fetchData();
-  }, []);
+    lastSevendays();
+  }, [currentDay, currentDayOfTheWeek, currentMonth, currentYear]);
 
   const emptyRows =
     page > 0 ? Math.max(0, (1 + page) * rowsPerPage - rows.length) : 0;
@@ -199,33 +207,54 @@ export default function HomePage() {
     setPage(0);
   };
 
+  const workedHoursParser = (value) => {
+    let workedHours = parseInt(value.substring(0, 2));
+    let workedMinutes = parseInt(value.substring(3, 5));
+    let totalWorkedHours = "" + workedHours;
+    if (workedHours > 1) {
+      totalWorkedHours += " hours";
+    } else {
+      totalWorkedHours += " hour";
+    }
+
+    if (workedMinutes > 0) {
+      totalWorkedHours = totalWorkedHours + " and " + workedMinutes;
+    }
+    if (workedMinutes > 1) {
+      totalWorkedHours += " minutes";
+    } else if (workedMinutes !== 0) {
+      totalWorkedHours += " minute";
+    }
+
+    return totalWorkedHours;
+  };
   const calculateHours = (arrivedTime, exitTime, id) => {
     var arrivedHour = parseInt(arrivedTime.substring(0, 2));
     var arrivedMinute = parseInt(arrivedTime.substring(3, 5));
     var exitHour = parseInt(exitTime.substring(0, 2));
     var exitMinute = parseInt(exitTime.substring(3, 5));
+    var totalMinutes = exitMinute - arrivedMinute;
     var totalHours = exitHour - arrivedHour;
-    var totalMinutes = arrivedMinute + exitMinute;
-    if (totalMinutes % 60 !== 0) {
-      totalHours += 1;
-      totalMinutes = totalMinutes % 60;
-    } else {
-      totalHours += 1;
-      totalMinutes = totalMinutes % 60;
+    if (totalMinutes < 0) {
+      totalMinutes += 60;
+      totalHours -= 1;
     }
-    let workedHours = "";
-    if (totalMinutes === 0) {
-      workedHours = totalHours + " hours";
-    } else if (totalMinutes === 1) {
-      workedHours = totalHours + " hours and " + totalMinutes + " minute";
+
+    let workedHoursDb = "";
+    if (totalHours < 10) {
+      workedHoursDb = "0" + totalHours + ":";
     } else {
-      workedHours = totalHours + " hours and " + totalMinutes + " minutes";
+      workedHoursDb = totalHours + ":";
+    }
+    if (totalMinutes < 10) {
+      workedHoursDb = workedHoursDb + "0" + totalMinutes;
+    } else {
+      workedHoursDb = workedHoursDb + totalMinutes;
     }
     axios.patch("http://localhost:3000/days/" + id, {
-      workedhours: workedHours,
+      workedhours: workedHoursDb,
     });
-
-    return workedHours;
+    return workedHoursParser(workedHoursDb);
   };
 
   const status = (arrivedTime, exitTime, id) => {
@@ -255,13 +284,18 @@ export default function HomePage() {
     return status;
   };
 
-  const newDateIntializing = (newValue) => {
+  const newArrivedDateIntializing = (newValue, min, max1, max2) => {
     var newDate = "";
-    if (newValue.getHours() < 10) {
-      newDate = newDate + "0" + newValue.getHours() + ":";
-    } else {
-      newDate = newDate + newValue.getHours() + ":";
-    }
+    if (
+      newValue.getTime() > min ||
+      newValue.getTime() < max1 ||
+      newValue.getTime() < max2
+    )
+      if (newValue.getHours() < 10) {
+        newDate = newDate + "0" + newValue.getHours() + ":";
+      } else {
+        newDate = newDate + newValue.getHours() + ":";
+      }
 
     if (newValue.getMinutes() < 10) {
       newDate = newDate + "0" + newValue.getMinutes() + ":";
@@ -275,6 +309,87 @@ export default function HomePage() {
     }
     return newDate;
   };
+
+  const arrivedTimeParser = (arrivedTimeValue, newValue) => {
+    var arrivedHour = parseInt(arrivedTimeValue.substring(0, 2));
+    var arrivedMinute = parseInt(arrivedTimeValue.substring(3, 5));
+    var arrivedTime = new Date(
+      newValue.getFullYear(),
+      newValue.getMonth(),
+      newValue.getDate(),
+      arrivedHour,
+      arrivedMinute
+    );
+    return arrivedTime;
+  };
+  const newDateIntializing = (newValue, min1, max1, max2) => {
+    var newDate = "";
+    var arrivedTime = arrivedTimeParser(min1, newValue);
+    if (
+      newValue.getTime() > arrivedTime ||
+      newValue.getTime() < max1 ||
+      newValue.getTime() < max2
+    )
+      if (newValue.getHours() < 10) {
+        newDate = newDate + "0" + newValue.getHours() + ":";
+      } else {
+        newDate = newDate + newValue.getHours() + ":";
+      }
+
+    if (newValue.getMinutes() < 10) {
+      newDate = newDate + "0" + newValue.getMinutes() + ":";
+    } else {
+      newDate = newDate + newValue.getMinutes() + " ";
+    }
+    if (newValue.getHours() < 12) {
+      newDate += "AM";
+    } else {
+      newDate += "PM";
+    }
+    return newDate;
+  };
+
+  const lastSevendays = () => {
+    let rowsCopy = [];
+    let sevenDays = rowsCopy.concat(rows);
+    sevenDays.splice(0, sevenDays.length - 8);
+    sevenDays.pop();
+
+    let sevenDaysWorkedHours = [];
+    for (let i = 0; i < sevenDays.length; i++) {
+      sevenDaysWorkedHours.push(sevenDays[i].workedhours);
+    }
+
+    let sevenDaysHours = [];
+    let sevenDaysMinutes = [];
+
+    for (let j = 0; j < sevenDaysWorkedHours.length; j++) {
+      let workedHour = parseInt(sevenDaysWorkedHours[j].substring(0, 2));
+      sevenDaysHours.push(workedHour);
+      let workedMinute = parseInt(sevenDaysWorkedHours[j].substring(3, 5));
+      sevenDaysMinutes.push(workedMinute);
+    }
+
+    let hoursSum = 0;
+    for (let k = 0; k < sevenDaysHours.length; k++) {
+      hoursSum += sevenDaysHours[k];
+    }
+
+    let minutesSum = 0;
+    for (let l = 0; l < sevenDaysMinutes.length; l++) {
+      minutesSum += sevenDaysMinutes[l];
+    }
+
+    hoursSum += parseInt(minutesSum / 60);
+    minutesSum = parseInt(minutesSum % 60);
+
+    let totalWorkedHours = hoursSum + " hours";
+    if (minutesSum > 0) {
+      totalWorkedHours = totalWorkedHours + " and " + minutesSum + " minutes";
+    }
+    return totalWorkedHours;
+  };
+
   return (
     <div>
       <h1
@@ -321,27 +436,42 @@ export default function HomePage() {
                         alignItems="center"
                       >
                         <CustomizedTimePicker
-                          label="Add arrived time starting from 8"
+                          label="Add arrived time from 8 to 6"
                           value={value}
                           onPickerChange={(newValue) => {
                             setValue(newValue);
-
-                            axios.patch(
-                              "http://localhost:3000/days/" + row.id,
-                              {
-                                arrived: newDateIntializing(newValue),
-                              }
-                            );
                           }}
                           renderPickerInput={(params) => (
                             <TextField {...params} />
                           )}
                           minTimeAllowed={new Date(0, 0, 0, 8)}
-                          maxTimeAllowed={new Date(0, 0, 0, 18)}
+                          maxTimeAllowed={new Date(0, 0, 0, 18, 1)}
                         />
 
                         <EnterButton
                           onButtonClick={() => {
+                            axios.patch(
+                              "http://localhost:3000/days/" + row.id,
+                              {
+                                arrived: newArrivedDateIntializing(
+                                  value,
+                                  new Date(
+                                    value.getFullYear(),
+                                    value.getMonth(),
+                                    value.getDate(),
+                                    8
+                                  ),
+                                  new Date(
+                                    value.getFullYear(),
+                                    value.getMonth(),
+                                    value.getDate(),
+                                    18
+                                  ),
+                                  new Date()
+                                ),
+                              }
+                            );
+
                             axios
                               .get("http://localhost:3000/days")
                               .then((resp) => {
@@ -356,7 +486,7 @@ export default function HomePage() {
                 <TableCell align="center">
                   {row.lunch !== "" ? (
                     row.lunch
-                  ) : (
+                  ) : row.arrived !== "" ? (
                     <div>
                       <Stack
                         spacing={2}
@@ -368,23 +498,32 @@ export default function HomePage() {
                           value={value}
                           onPickerChange={(newValue) => {
                             setValue(newValue);
-
-                            axios.patch(
-                              "http://localhost:3000/days/" + row.id,
-                              {
-                                lunch: newDateIntializing(newValue),
-                              }
-                            );
                           }}
                           renderPickerInput={(params) => (
                             <TextField {...params} />
                           )}
-                          minTimeAllowed={new Date(0, 0, 0, 8)}
-                          maxTimeAllowed={new Date(0, 0, 0, 18)}
+                          minTimeAllowed={arrivedTimeParser(row.arrived, value)}
+                          maxTimeAllowed={new Date(0, 0, 0, 18, 1)}
                         />
 
                         <EnterButton
                           onButtonClick={() => {
+                            axios.patch(
+                              "http://localhost:3000/days/" + row.id,
+                              {
+                                lunch: newDateIntializing(
+                                  value,
+                                  row.arrived,
+                                  new Date(
+                                    value.getFullYear(),
+                                    value.getMonth(),
+                                    value.getDate(),
+                                    18
+                                  )
+                                ),
+                              }
+                            );
+
                             axios
                               .get("http://localhost:3000/days")
                               .then((resp) => {
@@ -394,12 +533,18 @@ export default function HomePage() {
                         />
                       </Stack>
                     </div>
+                  ) : (
+                    <p style={{ color: "red" }}>
+                      {" "}
+                      Please enter arrived time first!
+                    </p>
                   )}
                 </TableCell>
+                {row.arrived ? true : row.arrived ? false : null}
                 <TableCell align="center">
                   {row.exit !== "" ? (
                     row.exit
-                  ) : (
+                  ) : row.arrived !== "" ? (
                     <div>
                       <Stack
                         spacing={2}
@@ -407,27 +552,37 @@ export default function HomePage() {
                         alignItems="center"
                       >
                         <CustomizedTimePicker
-                          label="Add exit time till 6"
+                          label="Add exit between arrived time and 6"
                           value={value}
                           onPickerChange={(newValue) => {
                             setValue(newValue);
-
-                            axios.patch(
-                              "http://localhost:3000/days/" + row.id,
-                              {
-                                exit: newDateIntializing(newValue),
-                              }
-                            );
                           }}
                           renderPickerInput={(params) => (
                             <TextField {...params} />
                           )}
-                          minTimeAllowed={new Date(0, 0, 0, 8)}
-                          maxTimeAllowed={new Date(0, 0, 0, 18)}
+                          minTimeAllowed={arrivedTimeParser(row.arrived, value)}
+                          maxTimeAllowed={new Date(0, 0, 0, 18, 1)}
                         />
 
                         <EnterButton
                           onButtonClick={() => {
+                            axios.patch(
+                              "http://localhost:3000/days/" + row.id,
+                              {
+                                exit: newDateIntializing(
+                                  value,
+                                  row.arrived,
+                                  new Date(
+                                    value.getFullYear(),
+                                    value.getMonth(),
+                                    value.getDate(),
+                                    18
+                                  ),
+                                  new Date()
+                                ),
+                              }
+                            );
+
                             axios
                               .get("http://localhost:3000/days")
                               .then((resp) => {
@@ -437,21 +592,38 @@ export default function HomePage() {
                         />
                       </Stack>
                     </div>
+                  ) : (
+                    <p style={{ color: "red" }}>
+                      {" "}
+                      Please enter arrived time first!
+                    </p>
                   )}
                 </TableCell>
 
                 <TableCell align="center">
                   {row.arrived !== "" &&
                   row.exit !== "" &&
-                  row.workedhours == ""
+                  row.workedhours === ""
                     ? calculateHours(row.arrived, row.exit, row.id)
-                    : row.workedhours}
+                    : row.workedhours !== ""
+                    ? workedHoursParser(row.workedhours)
+                    : ""}
                 </TableCell>
 
                 <TableCell align="center">
-                  {row.arrived !== "" && row.exit !== ""
-                    ? status(row.arrived, row.exit, row.id)
-                    : row.status}
+                  {row.arrived !== "" &&
+                  row.exit !== "" &&
+                  row.status === "" ? (
+                    status(row.arrived, row.exit, row.id) === "Below" ? (
+                      <p style={{ color: "red" }}> Below </p>
+                    ) : (
+                      <p style={{ color: "green" }}> Above </p>
+                    )
+                  ) : row.status === "Below" ? (
+                    <p style={{ color: "red" }}> {row.status} </p>
+                  ) : (
+                    <p style={{ color: "green" }}> {row.status} </p>
+                  )}
                 </TableCell>
               </TableRow>
             ))}
@@ -465,7 +637,13 @@ export default function HomePage() {
             <TableRow>
               <TablePagination
                 style={{ position: "absolute", right: "0", width: "100%" }}
-                rowsPerPageOptions={[5, 10, 25, { label: "All", value: -1 }]}
+                rowsPerPageOptions={[
+                  5,
+                  10,
+                  15,
+                  20,
+                  { label: "All", value: -1 },
+                ]}
                 colSpan={3}
                 count={rows.length}
                 rowsPerPage={rowsPerPage}
@@ -484,6 +662,10 @@ export default function HomePage() {
           </TableFooter>
         </Table>
       </TableContainer>
+      <p style={{ color: lightBlue[600], marginLeft: "5%" }}>
+        {" "}
+        You have worked for {lastSevendays()} in the last 7 days.{" "}
+      </p>
     </div>
   );
 }

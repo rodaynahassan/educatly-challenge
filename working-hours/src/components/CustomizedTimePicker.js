@@ -10,6 +10,7 @@ export default function CustomizedTimePicker({
   renderPickerInput,
   minTimeAllowed,
   maxTimeAllowed,
+  maxDateTimeAllowed,
 }) {
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns}>
@@ -19,7 +20,9 @@ export default function CustomizedTimePicker({
         onChange={onPickerChange}
         renderInput={renderPickerInput}
         minTime={minTimeAllowed}
+        maxTime={maxTimeAllowed}
         helperText="Some important text"
+        maxDateTime={maxDateTimeAllowed}
       />
     </LocalizationProvider>
   );
