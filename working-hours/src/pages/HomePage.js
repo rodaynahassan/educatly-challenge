@@ -262,15 +262,13 @@ export default function HomePage() {
     var arrivedMinute = parseInt(arrivedTime.substring(3, 5));
     var exitHour = parseInt(exitTime.substring(0, 2));
     var exitMinute = parseInt(exitTime.substring(3, 5));
+    var totalMinutes = exitMinute - arrivedMinute;
     var totalHours = exitHour - arrivedHour;
-    var totalMinutes = arrivedMinute + exitMinute;
-    if (totalMinutes % 60 !== 0) {
-      totalHours += 1;
-      totalMinutes = totalMinutes % 60;
-    } else {
-      totalHours += 1;
-      totalMinutes = totalMinutes % 60;
+    if (totalMinutes < 0) {
+      totalMinutes += 60;
+      totalHours -= 1;
     }
+    console.log(totalHours);
     let status = "";
     if (totalHours < 8) {
       status = "Below";
