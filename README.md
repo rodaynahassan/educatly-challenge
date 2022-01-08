@@ -18,6 +18,7 @@ Material UI was used in this project in order to build a scalable, interactive d
 
     - The table displayed is only for one employee showing his working hours history
     - The day is added automatically to the table, unless it's Friday or Saturday (assuming they are the official holidays).
+    - The employee should fulfill 8 working hours per day.
     - You should add the arriving time first to be able to enter the lunch break and exit time.
     - The arrived time should be between 8 AM and 6 PM
     - The lunch break and exit time should be greater than the arrived time and also between 8 AM and 6 PM.
