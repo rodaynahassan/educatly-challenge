@@ -3,7 +3,7 @@
 Welcome to tracking the working hours!
 First, cd working-hours
 First, run json-server using the following command:
-json-server --watch workingDays.json
+json-server --watch days.json
 
 Second, run the frontend using:
 npm start
